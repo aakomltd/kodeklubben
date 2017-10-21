@@ -69,6 +69,7 @@ def draw():
         shadow=(1, 1)
     )
 
+
 # Opprett et nytt hinder på utsiden av skjermen helt til høyre - på bakken
 def create_obstacle_rampe_h():
     actor = Actor('rampe_hoyre', anchor=('left', 'top'), pos=(WIDTH, GROUND-25))
@@ -124,7 +125,6 @@ def spawn_skater():
 
 # Her oppdateres skater'n
 def update_skater():
-
     if skater.hasBailed:
         return                              # da er det ikke mer å gjøre her...
 
@@ -139,18 +139,24 @@ def update_skater():
         if skater.colliderect(obstacle):
 
             if obstacle.collision_type == 'jump':
-                jump()
+                obstacle_left = obstacle.left+30
+                if obstacle_left < SKATER_XPOS:
+                    bail()
+                else:
+                    jump()
                 return
 
             if obstacle.collision_type == 'bail':
-                skater.hasBailed = True         # jepp, vi tryna :/
-                skater.image = 'fall'               # hvis vi har tryna, vis bildet av fall
+                bail()
                 return
 
+def bail():
+    skater.hasBailed = True         # jepp, vi tryna :/
+    skater.image = 'fall'               # hvis vi har tryna, vis bildet av fall
 
 # Sett igang et hopp
 def jump():
-    if skater.isJumping:
+    if skater.isJumping or skater.hasBailed:
         return
 
     skater.isJumping = True
