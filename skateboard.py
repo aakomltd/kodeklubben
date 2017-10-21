@@ -1,84 +1,153 @@
 import random
 
-TITLE = 'Skatemaster'
+# Sett opp vinduet
+TITLE = 'SkateMaster 9000'
 WIDTH = 1024
 HEIGHT = 500
 
-# Her kan du justere vanskelighetsgraden i spillet
-GAP = 40
-SPEED = 6
+# Plassering av Actors i forhold til bakgrunnen
+GROUND = 350
+SKATER_GROUND = GROUND-20
+SKATER_XPOS = 100
 
-skateboarder = Actor('stand', midbottom=(100, 369))
-skateboarder.dead = False
-skateboarder.score = 0
-skateboarder.vy = 0
-skateboarder.jumping = False
-obstacle = Actor('obstacle', anchor=('left', 'top'), pos=(-100, 23))
-sounds.bgmusic.play()
+# Variabler som setter vanskelighetsgraden i spillet
+OBSTACLE_RATE = 300
+SPEED = 500
+JUMP_DISTANCE = 150
+SCORE_PER_OBSTACLE = 1000
+JUMP_TIME = 0.3
+HANG_TIME = 0.1
+LAND_TIME = 0.4
+SCROLL_SPEED = 3.5
 
-#DETTE RESETTER OBJEKTENE SOM I DETTE TILFELLET ER HINDRENE
-def reset_objects():
-    pipe_gap_y = random.randint(200, HEIGHT - 200)
-    obstacle.pos = (WIDTH, 690 // 2)
+# Spilleren styrer objektet skater - som er en Actor
+skater = Actor('stand', anchor=('left', 'top'), pos=(SKATER_XPOS, SKATER_GROUND))    # Bruk bildet 'images/stand.png' og plasser oss på rett sted
+skater.score = 0
+skater.isJumping = False
+skater.hasBailed = False
 
-#HER DEFINERER VI HINDRENE OG VALGENE VI HAR
-def update_obstacle():
-    obstacle.left -= SPEED
-    if obstacle.right < 0:
-        reset_objects()
-        skateboarder.score += 1
+# Her legger vi hindre etterhvert som de blir oppretta
+obstacles = []
 
-#HER STYRER VI HVA SKATEBOARDEREN GJØR GITT VISSE KRITERIER
-def update_skateboarder():
-    uy = skateboarder.vy
-    skateboarder.y += (uy + skateboarder.vy)
-    if not skateboarder.dead:
-        if skateboarder.jumping:
-            skateboarder.image = 'jump'
-        else:
-            skateboarder.image = 'stand'
+# Denne holder styr på bakgrunnen
+scroll = WIDTH
 
-    if skateboarder.colliderect(obstacle):
-        skateboarder.dead = True
-        skateboarder.image = 'fall'
-
-    if not 0 < skateboarder.y < 720:
-        skateboarder.y = 369
-        skateboarder.dead = False
-        skateboarder.score = 0
-        skateboarder.vy = 0
-        reset_objects()
-
-
+# Funksjonen update() blir kjørt før hver eneste bildeoppdatering
 def update():
+    update_background();
     update_obstacle()
-    update_skateboarder()
-    
-#HER DEFINERER VI LANDINGEN
-def land():
-    animate(skateboarder, tween="accelerate", duration=0.4, pos=(100, 345))
-    skateboarder.jumping = False
-#HER DEFINERER VI HOPPET    
-def jump():
-    the_animation = animate(skateboarder, tween="decelerate", duration=0.4, pos=(100, 300))
-    the_animation.on_finished = land 
-    skateboarder.jumping = True
-#HER BESTEMMER VI HVA SOM SKAL SKJE NÅR VI TRYKKER PÅ SPACE
+    update_skater()
+
+# Funsjonen on_key_down() blir kjørt hver gang du trykker på en tast
 def on_key_down(key):
     if key==keys.SPACE:
-        if not skateboarder.dead:
-            sounds.jump.play()
+        if skater.hasBailed:
+            spawn_skater()
+        else:
             jump()
 
-#HER STARTER VI ALLE FUNKSJONENE SOM UTGJØR SPILLET
+    if key==keys.ESCAPE:
+        quit()
+
+# Funksjonen draw() tegner grafikken på skjermen
 def draw():
-    screen.blit('bg', (0, 0))
-    obstacle.draw()
-    skateboarder.draw()
-    screen.draw.text(
-        str(skateboarder.score),
+    screen.blit('bg', (-scroll, 0))         # tegn venstre side av bakgrunnen
+    screen.blit('bg', (WIDTH-scroll, 0))    # tegn høyre side av bakgrunnen
+
+    for obstacle in obstacles:
+        obstacle.draw()                     # tegn hindre
+
+    skater.draw()                           # tegn skater'n
+
+    screen.draw.text(                       # skriv poengene
+        str(skater.score),
         color='white',
         midtop=(WIDTH // 2, 10),
         fontsize=70,
         shadow=(1, 1)
     )
+
+# Opprett et nytt hinder på utsiden av skjermen helt til høyre - på bakken
+def create_obstacle():
+    return Actor('obstacle', anchor=('left', 'top'), pos=(WIDTH, GROUND))
+
+# Her oppdateres hindrene
+def update_obstacle():
+
+    # Gå igjennom hvert hinder som finnes akkurat nå
+    for obstacle in obstacles:
+
+        animate(obstacle, pos=(obstacle.left-SPEED, obstacle.top)) # Flytt dette hinderet mot venstre med avstanden SPEED
+
+        if obstacle.left < SKATER_XPOS and not skater.hasBailed:
+            skater.score += SCORE_PER_OBSTACLE  # Hvis vi har passert hinderet uten å falle, får vi poeng
+
+        if obstacle.left < 0:                   # Hvis hindret har passert kanten av skjermen, fjerner vi det
+            obstacles.remove(obstacle)
+
+    # Etter at vi har vært igjennom alle hindrene, er det en sjanse for at vi legger til et nytt
+    if random.randint(0, OBSTACLE_RATE) == 0:   # (Litt) tilfeldig om det blir noe nytt hinder eller ikke
+        obstacles.append(create_obstacle())
+
+# Skatern'n prøver på nytt
+def spawn_skater():
+    skater.score = 0
+    skater.y = GROUND
+    skater.isJumping = False
+    skater.hasBailed = False
+    obstacles = []
+
+# Her oppdateres skater'n
+def update_skater():
+
+    if skater.hasBailed:
+        return                              # da er det ikke mer å gjøre her...
+
+    skater.score += 1
+
+    if skater.isJumping:                    # hvis vi er i et hopp, vis hoppebildet
+        skater.image = 'jump'
+    else:                                   # ellers, vis det vanlige bildet
+        skater.image = 'stand'
+
+    for obstacle in obstacles:              # sjekk om vi kolliderer med noen av hindrene
+        if skater.colliderect(obstacle):
+            skater.hasBailed = True         # jepp, vi tryna :/
+            skater.image = 'fall'               # hvis vi har tryna, vis bildet av fall
+            return
+
+
+# Sett igang et hopp
+def jump():
+    if skater.isJumping:
+        return
+
+    skater.isJumping = True
+    sounds.jump.play()
+    jump_animation = animate(skater, tween="decelerate", duration=JUMP_TIME, pos=(SKATER_XPOS, SKATER_GROUND-JUMP_DISTANCE))
+    jump_animation.on_finished = hang    # Når hoppet er på toppen vil vi gjerne sveve litt fordi det ser tøft ut ;)
+
+# Heng litt i lufta
+def hang():
+    global skater
+    global hang_animation
+    hang_animation = animate(skater, tween="linear", duration=HANG_TIME, pos=(SKATER_XPOS, SKATER_GROUND-JUMP_DISTANCE), on_finished=land)
+
+# Begynn på landingen
+def land():
+    global land_animation
+    global skater
+    land_animation = animate(skater, tween="accelerate", duration=LAND_TIME, pos=(SKATER_XPOS, SKATER_GROUND), on_finished=jump_landed)
+
+
+# Når vi har landet kan vi ta nye hopp
+def jump_landed():
+    skater.isJumping = False
+
+# Scrolling av bakgrunnen skyver bildet hele tiden mot venstre
+def update_background():
+    global scroll
+    scroll += SCROLL_SPEED
+    if(scroll > WIDTH ):    # når vi kommer til kanten av bildet, begynner vi på nytt
+        scroll = 0
+
