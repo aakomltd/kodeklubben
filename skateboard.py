@@ -30,6 +30,7 @@ skater.hasBailed = False
 # Her legger vi hindre etterhvert som de blir oppretta
 obstacles = []
 previous_obstacle = OBSTACLE_PAUSE
+obstacle_animations = []
 
 # Denne holder styr på bakgrunnen
 scroll = WIDTH
@@ -81,16 +82,31 @@ def create_obstacle_bom():
      actor.collision_type = 'bail'
      return actor
 
+def remove_obstacle_anim(anim):
+    if obstacle_animations.count(anim) > 0:
+        obstacle_animations.remove(anim)
+
 # Her oppdateres hindrene
 def update_obstacle():
     global previous_obstacle
 
+    if skater.hasBailed:
+        for anim in obstacle_animations:
+            if(anim.running):
+                anim.stop(complete=False)
+                remove_obstacle_anim(anim)
+
+
     # Gå igjennom hvert hinder som finnes akkurat nå
     for obstacle in obstacles:
 
-        animate(obstacle, pos=(obstacle.left-SPEED, obstacle.top)) # Flytt dette hinderet mot venstre med avstanden SPEED
+        if skater.hasBailed:
+            return
+        anim = animate(obstacle, pos=(obstacle.left-SPEED, obstacle.top)) 
+        obstacle_animations.append(anim) # Flytt dette hinderet mot venstre med avstanden SPEED
+#        anim.on_finished = remove_obstacle_anim(anim)
 
-        if obstacle.left < SKATER_XPOS and not skater.hasBailed:
+        if obstacle.left < SKATER_XPOS:
             skater.score += SCORE_PER_OBSTACLE  # Hvis vi har passert hinderet uten å falle, får vi poeng
 
         if obstacle.left < 0:                   # Hvis hindret har passert kanten av skjermen, fjerner vi det
@@ -117,11 +133,21 @@ def update_obstacle():
 
 # Skatern'n prøver på nytt
 def spawn_skater():
+    global obstacles
+    global obstacle_animations
+
     skater.score = 0
     skater.y = GROUND
     skater.isJumping = False
     skater.hasBailed = False
+    for obstacle in obstacles:
+        obstacles.remove(obstacle)
     obstacles = []
+    for anim in obstacle_animations:
+        if anim.running:
+            anim.stop()
+        obstacle_animations.remove(anim)
+    obstacle_animations = []
 
 # Her oppdateres skater'n
 def update_skater():
@@ -184,6 +210,9 @@ def jump_landed():
 # Scrolling av bakgrunnen skyver bildet hele tiden mot venstre
 def update_background():
     global scroll
+    if skater.hasBailed:
+        return
+
     scroll += SCROLL_SPEED
     if(scroll > WIDTH ):    # når vi kommer til kanten av bildet, begynner vi på nytt
         scroll = 0
