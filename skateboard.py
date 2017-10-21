@@ -107,6 +107,10 @@ def update_obstacle():
         obstacles.append( create_obstacle_bom() )
         previous_obstacle = OBSTACLE_PAUSE
     if random_obstacle == 1:
+        no_obstacles = len(obstacles) - 1;
+        if(no_obstacles >= 0):
+            if obstacles[len(obstacles)-1].collision_type == 'jump':
+                return
         previous_obstacle = OBSTACLE_PAUSE
         obstacles.append( create_obstacle_rampe_h() )
 
