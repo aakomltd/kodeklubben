@@ -11,7 +11,8 @@ SKATER_GROUND = GROUND-20
 SKATER_XPOS = 100
 
 # Variabler som setter vanskelighetsgraden i spillet
-OBSTACLE_RATE = 300
+OBSTACLE_RATE = 200
+OBSTACLE_PAUSE = 20
 SPEED = 500
 JUMP_DISTANCE = 150
 SCORE_PER_OBSTACLE = 1000
@@ -28,6 +29,7 @@ skater.hasBailed = False
 
 # Her legger vi hindre etterhvert som de blir oppretta
 obstacles = []
+previous_obstacle = OBSTACLE_PAUSE
 
 # Denne holder styr på bakgrunnen
 scroll = WIDTH
@@ -68,11 +70,19 @@ def draw():
     )
 
 # Opprett et nytt hinder på utsiden av skjermen helt til høyre - på bakken
-def create_obstacle():
-    return Actor('obstacle', anchor=('left', 'top'), pos=(WIDTH, GROUND))
+def create_obstacle_rampe_h():
+    actor = Actor('rampe_hoyre', anchor=('left', 'top'), pos=(WIDTH, GROUND-25))
+    actor.collision_type = 'jump'
+    return actor
+
+def create_obstacle_bom():
+     actor = Actor('obstacle', anchor=('left', 'top'), pos=(WIDTH, GROUND))
+     actor.collision_type = 'bail'
+     return actor
 
 # Her oppdateres hindrene
 def update_obstacle():
+    global previous_obstacle
 
     # Gå igjennom hvert hinder som finnes akkurat nå
     for obstacle in obstacles:
@@ -85,9 +95,20 @@ def update_obstacle():
         if obstacle.left < 0:                   # Hvis hindret har passert kanten av skjermen, fjerner vi det
             obstacles.remove(obstacle)
 
+    previous_obstacle -= 1
+    if(previous_obstacle > 0):
+        return;
+
+
     # Etter at vi har vært igjennom alle hindrene, er det en sjanse for at vi legger til et nytt
-    if random.randint(0, OBSTACLE_RATE) == 0:   # (Litt) tilfeldig om det blir noe nytt hinder eller ikke
-        obstacles.append(create_obstacle())
+    random_obstacle = random.randint(0, OBSTACLE_RATE);
+
+    if random_obstacle == 0:   # (Litt) tilfeldig om det blir noe nytt hinder eller ikke
+        obstacles.append( create_obstacle_bom() )
+        previous_obstacle = OBSTACLE_PAUSE
+    if random_obstacle == 1:
+        previous_obstacle = OBSTACLE_PAUSE
+        obstacles.append( create_obstacle_rampe_h() )
 
 # Skatern'n prøver på nytt
 def spawn_skater():
@@ -112,9 +133,15 @@ def update_skater():
 
     for obstacle in obstacles:              # sjekk om vi kolliderer med noen av hindrene
         if skater.colliderect(obstacle):
-            skater.hasBailed = True         # jepp, vi tryna :/
-            skater.image = 'fall'               # hvis vi har tryna, vis bildet av fall
-            return
+
+            if obstacle.collision_type == 'jump':
+                jump()
+                return
+
+            if obstacle.collision_type == 'bail':
+                skater.hasBailed = True         # jepp, vi tryna :/
+                skater.image = 'fall'               # hvis vi har tryna, vis bildet av fall
+                return
 
 
 # Sett igang et hopp
