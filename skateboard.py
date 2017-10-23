@@ -47,7 +47,7 @@ def on_key_down(key):
         if skater.hasBailed:
             spawn_skater()
         else:
-            jump()
+            jump(1)
 
     if key==keys.ESCAPE:
         quit()
@@ -169,7 +169,7 @@ def update_skater():
                 if obstacle_left < SKATER_XPOS:
                     bail()
                 else:
-                    jump()
+                    jump(2)
                 return
 
             if obstacle.collision_type == 'bail':
@@ -181,13 +181,15 @@ def bail():
     skater.image = 'fall'               # hvis vi har tryna, vis bildet av fall
 
 # Sett igang et hopp
-def jump():
+def jump(height):
     if skater.isJumping or skater.hasBailed:
         return
 
+    
+
     skater.isJumping = True
     sounds.jump.play()
-    jump_animation = animate(skater, tween="decelerate", duration=JUMP_TIME, pos=(SKATER_XPOS, SKATER_GROUND-JUMP_DISTANCE))
+    jump_animation = animate(skater, tween="decelerate", duration=JUMP_TIME, pos=(SKATER_XPOS, SKATER_GROUND-JUMP_DISTANCE * height))
     jump_animation.on_finished = hang    # Når hoppet er på toppen vil vi gjerne sveve litt fordi det ser tøft ut ;)
 
 # Heng litt i lufta
